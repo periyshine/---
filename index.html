@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>声音素材剪辑和音效合成工具</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部工具栏 -->
+        <header class="toolbar">
+            <div class="toolbar-section">
+                <h1 class="app-title">音频编辑器</h1>
+            </div>
+            <div class="toolbar-section controls">
+                <button id="btn-import" class="btn btn-primary">
+                    <span class="icon">📁</span> 导入音频
+                </button>
+                <input type="file" id="file-input" accept="audio/*" multiple style="display: none;">
+            </div>
+            <div class="toolbar-section controls">
+                <button id="btn-undo" class="btn btn-secondary" disabled>
+                    <span class="icon">↩️</span> 撤销
+                </button>
+                <button id="btn-redo" class="btn btn-secondary" disabled>
+                    <span class="icon">↪️</span> 重做
+                </button>
+            </div>
+            <div class="toolbar-section controls">
+                <button id="btn-export" class="btn btn-success">
+                    <span class="icon">💾</span> 导出
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 拖拽导入区域 -->
+            <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-content">
+                    <div class="drop-zone-icon">🎵</div>
+                    <p class="drop-zone-text">拖拽音频文件到此处</p>
+                    <p class="drop-zone-subtext">或点击上方「导入音频」按钮</p>
+                    <p class="drop-zone-formats">支持格式: WAV, MP3, OGG, FLAC</p>
+                </div>
+            </div>
+
+            <!-- 音频编辑器区域 -->
+            <div id="editor-container" class="editor-container" style="display: none;">
+                <!-- 播放控制栏 -->
+                <div class="playback-controls">
+                    <div class="control-group">
+                        <button id="btn-stop" class="control-btn" title="停止">
+                            <span class="icon">⏹️</span>
+                        </button>
+                        <button id="btn-play" class="control-btn" title="播放">
+                            <span class="icon">▶️</span>
+                        </button>
+                        <button id="btn-pause" class="control-btn" title="暂停">
+                            <span class="icon">⏸️</span>
+                        </button>
+                        <button id="btn-loop" class="control-btn" title="循环">
+                            <span class="icon">🔁</span>
+                        </button>
+                    </div>
+                    <div class="time-display">
+                        <span id="current-time" class="time">00:00.000</span>
+                        <span class="time-separator">/</span>
+                        <span id="total-time" class="time">00:00.000</span>
+                    </div>
+                    <div class="control-group">
+                        <button id="btn-zoom-in" class="control-btn" title="放大">
+                            <span class="icon">🔍+</span>
+                        </button>
+                        <button id="btn-zoom-out" class="control-btn" title="缩小">
+                            <span class="icon">🔍-</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 波形显示区域 -->
+                <div class="waveform-container">
+                    <canvas id="waveform-canvas" class="waveform-canvas"></canvas>
+                    <div id="time-ruler" class="time-ruler"></div>
+                    <div id="selection-overlay" class="selection-overlay"></div>
+                </div>
+
+                <!-- 多轨时间轴 -->
+                <div class="tracks-container">
+                    <div class="tracks-header">
+                        <div class="track-info-header">音轨</div>
+                        <div class="track-timeline-header">时间轴</div>
+                    </div>
+                    <div id="tracks-list" class="tracks-list">
+                        <!-- 音轨将通过 JavaScript 动态添加 -->
+                    </div>
+                    <button id="btn-add-track" class="btn-add-track">
+                        <span class="icon">➕</span> 添加音轨
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧效果器面板 -->
+        <aside class="effects-panel">
+            <div class="panel-header">
+                <h2>效果器</h2>
+                <button id="btn-toggle-effects" class="btn-toggle">◀</button>
+            </div>
+
+            <div class="effects-content">
+                <!-- 均衡器 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>均衡器 (EQ)</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="eq-enabled" data-effect="eq">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="eq-bands">
+                            <div class="eq-band">
+                                <label>低频</label>
+                                <input type="range" class="eq-slider" data-band="low" min="-12" max="12" value="0">
+                                <span class="value">0 dB</span>
+                            </div>
+                            <div class="eq-band">
+                                <label>中低</label>
+                                <input type="range" class="eq-slider" data-band="midlow" min="-12" max="12" value="0">
+                                <span class="value">0 dB</span>
+                            </div>
+                            <div class="eq-band">
+                                <label>中频</label>
+                                <input type="range" class="eq-slider" data-band="mid" min="-12" max="12" value="0">
+                                <span class="value">0 dB</span>
+                            </div>
+                            <div class="eq-band">
+                                <label>中高</label>
+                                <input type="range" class="eq-slider" data-band="midhigh" min="-12" max="12" value="0">
+                                <span class="value">0 dB</span>
+                            </div>
+                            <div class="eq-band">
+                                <label>高频</label>
+                                <input type="range" class="eq-slider" data-band="high" min="-12" max="12" value="0">
+                                <span class="value">0 dB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 混响 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>混响</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="reverb-enabled" data-effect="reverb">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="control-row">
+                            <label>混响量</label>
+                            <input type="range" id="reverb-mix" min="0" max="100" value="30">
+                            <span class="value">30%</span>
+                        </div>
+                        <div class="control-row">
+                            <label>衰减时间</label>
+                            <input type="range" id="reverb-decay" min="0.1" max="10" step="0.1" value="2">
+                            <span class="value">2.0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 延迟 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>延迟</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="delay-enabled" data-effect="delay">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="control-row">
+                            <label>延迟时间</label>
+                            <input type="range" id="delay-time" min="0" max="1000" step="10" value="300">
+                            <span class="value">300ms</span>
+                        </div>
+                        <div class="control-row">
+                            <label>反馈</label>
+                            <input type="range" id="delay-feedback" min="0" max="90" value="30">
+                            <span class="value">30%</span>
+                        </div>
+                        <div class="control-row">
+                            <label>混合量</label>
+                            <input type="range" id="delay-mix" min="0" max="100" value="20">
+                            <span class="value">20%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 压缩器 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>压缩器</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="compressor-enabled" data-effect="compressor">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="control-row">
+                            <label>阈值</label>
+                            <input type="range" id="compressor-threshold" min="-60" max="0" value="-24">
+                            <span class="value">-24 dB</span>
+                        </div>
+                        <div class="control-row">
+                            <label>比率</label>
+                            <input type="range" id="compressor-ratio" min="1" max="20" value="4">
+                            <span class="value">4:1</span>
+                        </div>
+                        <div class="control-row">
+                            <label>攻击</label>
+                            <input type="range" id="compressor-attack" min="0" max="1000" step="10" value="10">
+                            <span class="value">10ms</span>
+                        </div>
+                        <div class="control-row">
+                            <label>释放</label>
+                            <input type="range" id="compressor-release" min="10" max="1000" step="10" value="100">
+                            <span class="value">100ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 滤波器 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>滤波器</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="filter-enabled" data-effect="filter">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="control-row">
+                            <label>类型</label>
+                            <select id="filter-type">
+                                <option value="lowpass">低通</option>
+                                <option value="highpass">高通</option>
+                                <option value="bandpass">带通</option>
+                                <option value="notch">陷波</option>
+                            </select>
+                        </div>
+                        <div class="control-row">
+                            <label>频率</label>
+                            <input type="range" id="filter-frequency" min="20" max="20000" value="1000">
+                            <span class="value">1000 Hz</span>
+                        </div>
+                        <div class="control-row">
+                            <label>Q值</label>
+                            <input type="range" id="filter-q" min="0.1" max="20" step="0.1" value="1">
+                            <span class="value">1.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 失真 -->
+                <div class="effect-section">
+                    <div class="effect-header">
+                        <h3>失真</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="distortion-enabled" data-effect="distortion">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="control-row">
+                            <label>驱动</label>
+                            <input type="range" id="distortion-drive" min="0" max="100" value="20">
+                            <span class="value">20%</span>
+                        </div>
+                        <div class="control-row">
+                            <label>混合量</label>
+                            <input type="range" id="distortion-mix" min="0" max="100" value="50">
+                            <span class="value">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 导出对话框 -->
+        <div id="export-dialog" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>导出音频</h2>
+                    <button class="btn-close" id="btn-close-export">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>文件名</label>
+                        <input type="text" id="export-filename" value="audio_export" placeholder="输入文件名">
+                    </div>
+                    <div class="form-group">
+                        <label>格式</label>
+                        <select id="export-format">
+                            <option value="wav">WAV (无损)</option>
+                            <!-- 未来可添加其他格式 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>采样率</label>
+                        <select id="export-samplerate">
+                            <option value="44100">44.1 kHz</option>
+                            <option value="48000">48 kHz</option>
+                            <option value="96000">96 kHz</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>位深度</label>
+                        <select id="export-bitdepth">
+                            <option value="16">16 bit</option>
+                            <option value="24">24 bit</option>
+                            <option value="32">32 bit (float)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btn-cancel-export" class="btn btn-secondary">取消</button>
+                    <button id="btn-do-export" class="btn btn-primary">导出</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右键菜单 -->
+        <div id="context-menu" class="context-menu" style="display: none;">
+            <div class="menu-item" data-action="split">分割</div>
+            <div class="menu-item" data-action="delete">删除</div>
+            <div class="menu-item" data-action="duplicate">复制</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item" data-action="fade-in">淡入</div>
+            <div class="menu-item" data-action="fade-out">淡出</div>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">处理中...</p>
+        </div>
+
+        <!-- 状态栏 -->
+        <footer class="status-bar">
+            <div class="status-section">
+                <span id="status-text">就绪</span>
+            </div>
+            <div class="status-section">
+                <span id="sample-rate">采样率: -- Hz</span>
+            </div>
+            <div class="status-section">
+                <span id="memory-usage">内存: --</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/audio-engine.js"></script>
+    <script src="js/audio-editor.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/mixer.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
